@@ -1,17 +1,32 @@
 import express from "express";
 import Doctor from "../modelse/DoctorSchemea.js"
+import multer from "multer";
 
 const router = express.Router();
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads')
+  },
+  filename: function (req, file, cb) {
+      const ext = file.originalname.split('.').pop();
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+  cb(null, file.fieldname + '-' + uniqueSuffix + '.' + ext);
+  }
+})
+
+const upload = multer({ storage: storage })
 
 
 
-router.post("/addDoctors", async(req,res)=>{
+router.post("/addDoctors", upload.single('image'), async(req,res)=>{
     try{
         const {name, specialty, description, experienceYears} = req.body;
-    if(!name || !specialty || !description || !experienceYears)
+
+        const image = req.file ? req.file.filename : null
+    if(!name || !specialty || !description || !experienceYears || !image)
         return res.status(400).json({message: "all fields are required"})
 
-    const newDoctor = new Doctor({name, specialty, description, experienceYears})
+    const newDoctor = new Doctor({name, specialty, description, experienceYears, image:req.file?.filename})
 
     const savedDoctors = await newDoctor.save()
 
@@ -24,6 +39,17 @@ router.post("/addDoctors", async(req,res)=>{
 })
 
 
+router.get("/allDoctors", async(req,res)=>{
+    const doctors = await Doctor.find()
+
+    res.json(doctors);
+})
+router.get("/:id", async(req,res)=>{
+    const doctor = await Doctor.findById(req.params.id)
+    if(!doctor) return res.status(404).json({ message: "Doctor not found"});
+
+    res.json(doctor);
+})
 
 
 
